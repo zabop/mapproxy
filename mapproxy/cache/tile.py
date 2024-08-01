@@ -486,6 +486,14 @@ class TileCreator(object):
         for meta_tile in meta_tiles:
             created_tiles.extend(self._create_meta_tile(meta_tile))
         return created_tiles
+    
+    @contextmanager
+    def _store_tiles(self, cachable, splitted_tiles):
+        try:
+            yield
+        finally:
+            if cachable:
+                self.cache.store_tiles(splitted_tiles, dimensions=self.dimensions)
 
     def _create_meta_tile(self, meta_tile):
         """
@@ -504,9 +512,8 @@ class TileCreator(object):
                 splitted_tiles = split_meta_tiles(meta_tile_image, meta_tile.tile_patterns,
                                                   tile_size, self.tile_mgr.image_opts)
                 splitted_tiles = [self.tile_mgr.apply_tile_filter(t) for t in splitted_tiles]
-                if meta_tile_image.cacheable:
-                    self.cache.store_tiles(splitted_tiles, dimensions=self.dimensions)
-                return splitted_tiles
+                with self._store_tiles(meta_tile_image.cacheable, splitted_tiles):
+                    return splitted_tiles 
             # else
         tiles = [Tile(coord) for coord in meta_tile.tiles]
         self.cache.load_tiles(tiles, dimensions=self.dimensions)
